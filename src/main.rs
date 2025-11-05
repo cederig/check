@@ -1,16 +1,19 @@
 use std::fs;
-use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::io::{Read, Seek};
+use std::path::Path;
 use anyhow::{Context, Result};
 use clap::Parser;
 use sha2::{Digest, Sha256};
+use glob::glob;
+
+const INFER_BUFFER_SIZE: usize = 4096;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
     /// The path to the file or directory to inspect
     #[arg(value_name = "PATH")]
-    path: PathBuf,
+    path: Vec<String>,
     #[arg(short, long, help = "Process directories recursively")]
     recursive: bool,
     #[arg(long, help = "Show SHA256 checksum")]
@@ -60,20 +63,27 @@ fn process_file(path: &Path) -> Result<FileInfo> {
     let size = metadata.len();
     let formatted_size = format_size(size);
 
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).context("Failed to read file content")?;
+    // Read a small chunk for inferring file type and encoding
+    let mut infer_buffer = vec![0; INFER_BUFFER_SIZE];
+    let bytes_read = file.read(&mut infer_buffer).context("Failed to read file chunk for inference")?;
+    infer_buffer.truncate(bytes_read); // Adjust buffer size to actual bytes read
 
     // File Type
-    let file_type = infer::get(&buffer)
+    let file_type = infer::get(&infer_buffer)
         .map_or_else(|| "unknown".to_string(), |t| t.mime_type().to_string());
 
     // Encoding
-    let (encoding, ..) = chardet::detect(&buffer);
+    let (encoding, ..) = chardet::detect(&infer_buffer);
     let encoding_name = format!("{:?}", encoding);
 
+    // Reset file cursor to the beginning to read the whole file for checksums
+    file.rewind().context("Failed to rewind file")?;
+    let mut full_buffer = Vec::new();
+    file.read_to_end(&mut full_buffer).context("Failed to read full file content for checksums")?;
+
     // Hashes
-    let sha256 = format!("{:x}", Sha256::digest(&buffer));
-    let md5 = format!("{:x}", md5::compute(&buffer));
+    let sha256 = format!("{:x}", Sha256::digest(&full_buffer));
+    let md5 = format!("{:x}", md5::compute(&full_buffer));
 
     Ok(FileInfo {
         size,
@@ -119,36 +129,38 @@ fn walk_and_process_dir(path: &Path, cli: &Cli) -> Result<()> {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let path = &cli.path;
 
-    if !path.exists() {
-        anyhow::bail!("Path does not exist: {}", path.display());
-    }
-
-    if path.is_dir() {
-        println!("Processing directory: {}\n", path.display());
-        walk_and_process_dir(path, &cli)?;
-    } else if path.is_file() {
-        println!("--- File: {} ---", path.display());
-        match process_file(path) {
-            Ok(info) => {
-                println!("  Size: {}", info.formatted_size);
-                println!("  Type: {}", info.file_type);
-                println!("  Encoding: {}", info.encoding);
-                if cli.sha {
-                    println!("  SHA256: {}", info.sha256);
+    for pattern in &cli.path {
+        for entry in glob(&pattern).context(format!("Failed to read glob pattern: {}", pattern))? {
+            match entry {
+                Ok(path) => {
+                    if path.is_dir() {
+                        println!("Processing directory: {}\n", path.display());
+                        walk_and_process_dir(&path, &cli)?;
+                    } else if path.is_file() {
+                        println!("--- File: {} ---", path.display());
+                        match process_file(&path) {
+                            Ok(info) => {
+                                println!("  Size: {}", info.formatted_size);
+                                println!("  Type: {}", info.file_type);
+                                println!("  Encoding: {}", info.encoding);
+                                if cli.sha {
+                                    println!("  SHA256: {}", info.sha256);
+                                }
+                                if cli.md5 {
+                                    println!("  MD5: {}", info.md5);
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("  Error processing file: {}", e);
+                            }
+                        }
+                        println!("----------------\n");
+                    }
                 }
-                if cli.md5 {
-                    println!("  MD5: {}", info.md5);
-                }
-            }
-            Err(e) => {
-                eprintln!("  Error processing file: {}", e);
+                Err(e) => eprintln!("Error processing glob entry: {}", e),
             }
         }
-        println!("----------------\n");
-    } else {
-        anyhow::bail!("Path is not a file or a directory: {}", path.display());
     }
 
     Ok(())
@@ -205,3 +217,4 @@ mod tests {
         assert_eq!(format_size(u64::MAX), "16.00 EB");
     }
 }
+
