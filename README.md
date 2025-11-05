@@ -1,6 +1,6 @@
 # check
 
-A simple command-line tool written in Rust to get information about a file or all files in a directory.
+`check` is a simple and fast command-line tool written in Rust to get information about a file or all files in a directory.
 
 ## Features
 
@@ -20,30 +20,39 @@ The project uses the following main Rust crates:
 - `infer` for detecting file types.
 - `chardet` for detecting character encodings.
 
-## Prerequisites
+## Installation
 
-To build this project, you need to have the Rust toolchain (including `rustc` and `cargo`) installed on your system.
+### Prerequisites
 
-You can install it from [rustup.rs](https://rustup.rs/).
+Make sure you have Rust and Cargo installed on your system. You can install them by following the instructions on the official Rust website: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
 
-## Installation and Compilation
-
-The compilation process is the same for Linux, macOS, and Windows.
-
-1.  **Clone the repository:**
+### Compiling for Linux (from Linux)
+1.  Clone this repository:
     ```sh
-    git clone <repository_url>
+    git clone https://github.com/cederig/check.git
     cd check
     ```
-
-2.  **Build the project in release mode:**
+2.  Compile the project:
     ```sh
     cargo build --release
     ```
+    The executable will be located in `target/release/check`.
 
-3.  **Find the executable:**
-    - On Linux and macOS, the executable will be at `target/release/check`.
-    - On Windows, it will be at `target\release\check.exe`.
+### Compiling for Windows (from Linux/macOS)
+
+To cross-compile this project for Windows from another operating system (like Linux or macOS), you will need the Rust target for Windows.
+
+1.  Add the Windows target to your Rust installation:
+    ```sh
+    rustup target add x86_64-pc-windows-gnu
+    ```
+
+2.  Compile the project for the Windows target:
+    ```sh
+    cargo build --release --target=x86_64-pc-windows-gnu
+    ```
+
+The Windows executable will be located in `target/x86_64-pc-windows-gnu/release/check.exe`.
 
 ## Usage
 

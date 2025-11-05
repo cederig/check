@@ -1,6 +1,6 @@
 # check
 
-Un outil en ligne de commande simple écrit en Rust pour obtenir des informations sur un fichier ou sur tous les fichiers d'un répertoire.
+`check` est un outil en ligne de commande simple et rapide écrit en Rust pour obtenir des informations sur un fichier ou sur tous les fichiers d'un répertoire.
 
 ## Fonctionnalités
 
@@ -20,30 +20,39 @@ Le projet utilise les principales caisses (crates) Rust suivantes :
 - `infer` pour la détection des types de fichiers.
 - `chardet` pour la détection de l'encodage des caractères.
 
-## Prérequis
+## Installation
 
-Pour compiler ce projet, vous devez avoir la chaîne d'outils Rust (y compris `rustc` et `cargo`) installée sur votre système.
+### Prérequis
 
-Vous pouvez l'installer depuis [rustup.rs](https://rustup.rs/).
+Assurez-vous d'avoir Rust et Cargo d'installés sur votre système. Vous pouvez les installer en suivant les instructions sur le site officiel de Rust : [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
 
-## Installation et Compilation
-
-Le processus de compilation est le même pour Linux, macOS et Windows.
-
-1.  **Clonez le dépôt :**
+### Compilation pour Linux (depuis Linux)
+1.  Clonez ce dépôt :
     ```sh
-    git clone <repository_url>
+    git clone https://github.com/cederig/check.git
     cd check
     ```
-
-2.  **Compilez le projet en mode `release` :**
+2.  Compilez le projet :
     ```sh
     cargo build --release
     ```
+    L'exécutable se trouvera dans `target/release/check`.
 
-3.  **Trouvez l'exécutable :**
-    - Sur Linux et macOS, l'exécutable se trouvera à `target/release/check`.
-    - Sur Windows, il se trouvera à `target\release\check.exe`.
+### Compilation pour macOS (depuis Linux/macOS)
+
+Pour compiler ce projet pour Windows à partir d'un autre système d'exploitation (comme Linux ou macOS), vous pouvez utiliser la compilation croisée. Vous aurez besoin de la cible Rust pour Windows.
+
+1.  Ajoutez la cible Windows à votre installation Rust :
+    ```sh
+    rustup target add x86_64-pc-windows-gnu
+    ```
+
+2.  Compilez le projet pour la cible Windows :
+    ```sh
+    cargo build --release --target=x86_64-pc-windows-gnu
+    ```
+
+L'exécutable pour Windows se trouvera dans `target/x86_64-pc-windows-gnu/release/check.exe`.
 
 ## Utilisation
 
