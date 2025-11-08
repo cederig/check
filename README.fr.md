@@ -18,7 +18,7 @@ Le projet utilise les principales caisses (crates) Rust suivantes :
 - `anyhow` et `thiserror` pour la gestion des erreurs.
 - `sha2` et `md5` pour le calcul des sommes de contrôle.
 - `infer` pour la détection des types de fichiers.
-- `chardet` pour la détection de l'encodage des caractères.
+- `charset-normalizer-rs` pour la détection de l'encodage des caractères.
 
 ## Installation
 

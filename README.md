@@ -18,7 +18,7 @@ The project uses the following main Rust crates:
 - `anyhow` and `thiserror` for error handling.
 - `sha2` and `md5` for calculating checksums.
 - `infer` for detecting file types.
-- `chardet` for detecting character encodings.
+- `charset-normalizer-rs` for detecting character encodings.
 
 ## Installation
 

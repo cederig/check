@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use sha2::{Digest, Sha256};
 use glob::glob;
+use charset_normalizer_rs::{from_bytes};
 
 const INFER_BUFFER_SIZE: usize = 4096;
 
@@ -73,8 +74,15 @@ fn process_file(path: &Path) -> Result<FileInfo> {
         .map_or_else(|| "unknown".to_string(), |t| t.mime_type().to_string());
 
     // Encoding
-    let (encoding, ..) = chardet::detect(&infer_buffer);
-    let encoding_name = format!("{:?}", encoding);
+    let result = from_bytes(&infer_buffer, None);
+    let best_guess = result.unwrap();
+    let get_best = best_guess.get_best();
+    let name = match get_best {
+        Some(m) => m.encoding(),
+        None => "unknown",
+    };
+    let encoding_name = format!("{:?}", name);
+
 
     // Reset file cursor to the beginning to read the whole file for checksums
     file.rewind().context("Failed to rewind file")?;
