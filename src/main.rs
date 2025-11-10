@@ -1,13 +1,10 @@
-use std::fs;
-use std::io::{Read, Seek};
+mod utils;
+
 use std::path::Path;
 use anyhow::{Context, Result};
 use clap::Parser;
-use sha2::{Digest, Sha256};
 use glob::glob;
-use charset_normalizer_rs::{from_bytes};
-
-const INFER_BUFFER_SIZE: usize = 4096;
+use crate::utils::process_file;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -23,88 +20,8 @@ struct Cli {
     md5: bool,
 }
 
-#[derive(Debug, PartialEq)]
-struct FileInfo {
-    size: u64,
-    formatted_size: String,
-    file_type: String,
-    encoding: String,
-    sha256: String,
-    md5: String,
-}
-
-fn format_size(bytes: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = 1024 * KB;
-    const GB: u64 = 1024 * MB;
-    const TB: u64 = 1024 * GB;
-    const PB: u64 = 1024 * TB;
-    const EB: u64 = 1024 * PB;
-
-    if bytes < KB {
-        format!("{} bytes", bytes)
-    } else if bytes < MB {
-        format!("{:.2} KB", bytes as f64 / KB as f64)
-    } else if bytes < GB {
-        format!("{:.2} MB", bytes as f64 / MB as f64)
-    } else if bytes < TB {
-        format!("{:.2} GB", bytes as f64 / GB as f64)
-    } else if bytes < PB {
-        format!("{:.2} TB", bytes as f64 / TB as f64)
-    } else if bytes < EB {
-        format!("{:.2} PB", bytes as f64 / PB as f64)
-    } else {
-        format!("{:.2} EB", bytes as f64 / EB as f64)
-    }
-}
-
-fn process_file(path: &Path) -> Result<FileInfo> {
-    let mut file = fs::File::open(path).context("Failed to open file")?;
-    let metadata = file.metadata().context("Failed to read metadata")?;
-    let size = metadata.len();
-    let formatted_size = format_size(size);
-
-    // Read a small chunk for inferring file type and encoding
-    let mut infer_buffer = vec![0; INFER_BUFFER_SIZE];
-    let bytes_read = file.read(&mut infer_buffer).context("Failed to read file chunk for inference")?;
-    infer_buffer.truncate(bytes_read); // Adjust buffer size to actual bytes read
-
-    // File Type
-    let file_type = infer::get(&infer_buffer)
-        .map_or_else(|| "unknown".to_string(), |t| t.mime_type().to_string());
-
-    // Encoding
-    let result = from_bytes(&infer_buffer, None);
-    let best_guess = result.unwrap();
-    let get_best = best_guess.get_best();
-    let name = match get_best {
-        Some(m) => m.encoding(),
-        None => "unknown",
-    };
-    let encoding_name = format!("{:?}", name);
-
-
-    // Reset file cursor to the beginning to read the whole file for checksums
-    file.rewind().context("Failed to rewind file")?;
-    let mut full_buffer = Vec::new();
-    file.read_to_end(&mut full_buffer).context("Failed to read full file content for checksums")?;
-
-    // Hashes
-    let sha256 = format!("{:x}", Sha256::digest(&full_buffer));
-    let md5 = format!("{:x}", md5::compute(&full_buffer));
-
-    Ok(FileInfo {
-        size,
-        formatted_size,
-        file_type,
-        encoding: encoding_name,
-        sha256,
-        md5,
-    })
-}
-
 fn walk_and_process_dir(path: &Path, cli: &Cli) -> Result<()> {
-    for entry in fs::read_dir(path).context("Failed to read directory")? {
+    for entry in std::fs::read_dir(path).context("Failed to read directory")? {
         let entry = entry.context("Failed to read directory entry")?;
         let current_path = entry.path();
 
@@ -174,11 +91,11 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Write;
+    use crate::utils::format_size;
 
     #[test]
     fn test_process_file() {
